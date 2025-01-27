@@ -164,7 +164,11 @@ class TableParser:
                     text = a_element.attributes['href']
                 else:
                     text = ""
-            values.append(func(text))
+            if text != '':
+                values.append(func(text))
+            else:
+                values.append(None)
+                
         return values
 
     def rider_url(self) -> List[str]:

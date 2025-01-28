@@ -38,7 +38,26 @@ class Team(Scraper):
         :return: Display name, e.g. ``BORA - hansgrohe``.
         """
         display_name_html = self.html.css_first(".page-title > .main > h1")
-        return display_name_html.text().split(" (")[0]
+
+        if display_name_html is not None:
+            return display_name_html.text().split(" (")[0]
+        else:
+            return None
+        
+    def year(self) -> Optional[int]:
+        """
+        Parses the year from the HTML.
+
+        :return: Year as an integer if available, otherwise None.
+        """
+        display_year_html = self.html.css_first(".page-title > .main > span.red")
+
+        if display_year_html is not None:
+            year_text = display_year_html.text()
+            if year_text.isdigit():
+                return int(year_text)
+        
+        return None
 
     def nationality(self) -> str:
         """
@@ -49,7 +68,11 @@ class Team(Scraper):
         nationality_html = self.html.css_first(
             ".page-title > .main > span.flag")
         flag_class = nationality_html.attributes['class']
-        return flag_class.split(" ")[1].upper() # type: ignore
+
+        if flag_class is not None:
+            return flag_class.split(" ")[1].upper() # type: ignore
+        else:
+            return None
 
     def status(self) -> str:
         """
@@ -59,7 +82,11 @@ class Team(Scraper):
         """
         team_status_html = self.html.css_first(
             "div > ul.infolist > li:nth-child(1) > div:nth-child(2)")
-        return team_status_html.text()
+        
+        if team_status_html is not None:
+            return team_status_html.text()
+        else:
+            return None
 
     def abbreviation(self) -> str:
         """
@@ -70,7 +97,11 @@ class Team(Scraper):
         """
         abbreviation_html = self.html.css_first(
             "div > ul.infolist > li:nth-child(2) > div:nth-child(2)")
-        return abbreviation_html.text()
+        if abbreviation_html is not None:
+            result = abbreviation_html.text()
+        else:
+            result = None
+        return result
 
     def bike(self) -> str:
         """
@@ -80,7 +111,11 @@ class Team(Scraper):
         """
         bike_html = self.html.css_first(
             "div > ul.infolist > li:nth-child(4) > div:nth-child(2)")
-        return bike_html.text()
+        
+        if bike_html is not None:
+            return bike_html.text()
+        else:
+            return None
 
     def wins_count(self) -> Optional[int]:
         """
@@ -89,6 +124,9 @@ class Team(Scraper):
         :return: Count of wins in corresponding season.
         """
         wins_count_html = self.html.css_first(".team-kpi > li.nr")
+        if wins_count_html is None:
+            return None
+
         wins_count_text = str(wins_count_html.text())
         if wins_count_text.isdigit():
             return int(wins_count_text)
@@ -105,7 +143,8 @@ class Team(Scraper):
         """
         team_ranking_html = self.html.css_first(
             ".team-kpi > li.nr:nth-child(4)")
-        if team_ranking_html.text().isnumeric():
+        
+        if team_ranking_html is not None and team_ranking_html.text().isnumeric():
             return int(team_ranking_html.text())
         else:
             return None
@@ -119,7 +158,7 @@ class Team(Scraper):
         """
         team_ranking_html = self.html.css_first(
             ".team-kpi > li.nr:nth-child(6)")
-        if team_ranking_html.text().isnumeric():
+        if team_ranking_html is not None and team_ranking_html.text().isnumeric():
             return int(team_ranking_html.text())
         else:
             return None
@@ -132,7 +171,7 @@ class Team(Scraper):
         """
         team_ranking_html = self.html.css_first(
             ".team-kpi > li.nr:nth-child(8)")
-        if team_ranking_html.text().isnumeric():
+        if team_ranking_html is not None and team_ranking_html.text().isnumeric():
             return int(team_ranking_html.text())
         else:
             return None
@@ -188,6 +227,11 @@ class Team(Scraper):
         mapping = {}
         for i, li in enumerate(self.html.css("ul.riderlistTabs > li")):
             mapping[li.text()] = i
+
+        # Return an empty list if mapping is empty
+        if not mapping:
+            return []
+
         all_tables = self.html.css("div.ridersTab")
 
         fields = parse_table_fields_args(args, available_fields)

@@ -123,7 +123,7 @@ class Team(Scraper):
 
         :return: Count of wins in corresponding season.
         """
-        wins_count_html = self.html.css_first(".team-kpi > li.nr")
+        wins_count_html = self.html.css_first(".team-kpi > li.nr a")
         if wins_count_html is None:
             return None
 

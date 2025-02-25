@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from .scraper import Scraper
 from .table_parser import TableParser
-from .utils import get_day_month, parse_table_fields_args
+from .utils import get_day_month, parse_table_fields_args, get_height_weight
 
 
 class Rider(Scraper):
@@ -71,9 +71,9 @@ class Rider(Scraper):
         """
         return self.html.css_first(".page-title > .main > h1").text()
 
-    def weight(self) -> Optional[float]:
+    def _weight(self) -> Optional[float]:
         """
-        Parses rider's current weight from HTML.
+        Helper method for parsing weight.
 
         :return: Rider's weigth in kilograms.
         """
@@ -89,9 +89,17 @@ class Rider(Scraper):
             except Exception:
                 return None
 
-    def height(self) -> Optional[float]:
+    def weight(self) -> Optional[float]:
         """
         Parses rider's height from HTML.
+
+        :return: Rider's height in meters.
+        """
+        return get_height_weight(self._height(), self._weight())[1]
+
+    def _height(self) -> Optional[float]:
+        """
+        Helper method for parsing height.
 
         :return: Rider's height in meters.
         """
@@ -109,6 +117,14 @@ class Rider(Scraper):
             except Exception:
                 return None
 
+    def height(self) -> Optional[float]:
+        """
+        Parses rider's height from HTML.
+
+        :return: Rider's height in meters.
+        """
+        return get_height_weight(self._height(), self._weight())[0]
+            
     def nationality(self) -> str:
         """
         Parses rider's nationality from HTML.
@@ -164,16 +180,17 @@ class Rider(Scraper):
             "class"
         )
         fields = parse_table_fields_args(args, available_fields)
-        seasons_html_table = self.html.css_first("ul.list.rdr-teams")
+        seasons_html_table = self.html.css_first("ul.rdr-teams2")
         table_parser = TableParser(seasons_html_table)
         casual_fields = [f for f in fields
                          if f in ("season", "team_name", "team_url")]
         if casual_fields:
             table_parser.parse(casual_fields)
         # add classes for row validity checking
-        classes = table_parser.parse_extra_column(2,
-            lambda x: x.replace("(", "").replace(")", "").replace(" ", "")
-            if x and "retired" not in x.lower() else None)
+        classes = table_parser.parse_extra_column(1,
+            lambda x: x.split(" ")[-1].replace("(", "").replace(")", "")
+            if x and not x.split(" ")[-1].replace("(", "").replace(")", "")[0].isnumeric() and
+            "retired" not in x.lower() else None)
         table_parser.extend_table("class", classes)
         if "since" in fields:
             until_dates = table_parser.parse_extra_column(-2,
@@ -183,7 +200,6 @@ class Rider(Scraper):
             until_dates = table_parser.parse_extra_column(-2,
                 lambda x: get_day_month(x) if "until" in x else "12-31")
             table_parser.extend_table("until", until_dates)
-
         table = [row for row in table_parser.table if row['class']]
         # remove class field if isn't needed
         if "class" not in fields:
@@ -271,7 +287,10 @@ class Rider(Scraper):
         for tr in results_html.css("tbody > tr"):
             if not tr.css("td")[1].text():
                 tr.remove()
-                
+
+        # Clean string when there's an additional crossed-out value. Takes most recent updated value
+        clean_crossed_out_val = lambda x: x.strip().split(' ')[-1]
+
         table_parser = TableParser(results_html)
         if casual_fields:
             table_parser.parse(casual_fields)
@@ -298,15 +317,15 @@ class Rider(Scraper):
             table_parser.extend_table("gc_position", gc_positions)
         if "distance" in fields:
             distances = table_parser.parse_extra_column("Distance", lambda x:
-                float(x) if x.split(".")[0].isnumeric() else None)
+                float(clean_crossed_out_val(x)) if x.split(".")[0].isnumeric() else None)
             table_parser.extend_table("distance", distances)
         if "pcs_points" in fields:
             pcs_points = table_parser.parse_extra_column("PCS", lambda x:
-                float(x) if x.isnumeric() else 0)
+                float(clean_crossed_out_val(x)) if x.isnumeric() else 0)
             table_parser.extend_table("pcs_points", pcs_points)
         if "uci_points" in fields:
             uci_points = table_parser.parse_extra_column("UCI", lambda x:
-                float(x) if x.isnumeric() else 0)
+                float(clean_crossed_out_val(x)) if x.isnumeric() else 0)
             table_parser.extend_table("uci_points", uci_points)
             
         return table_parser.table
